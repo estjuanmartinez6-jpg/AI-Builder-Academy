@@ -14,6 +14,21 @@ function runIdFetch() {
 }
 
 export async function askClaude(system: string, prompt: string): Promise<string> {
+  let last: unknown;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      return await askOnce(system, prompt);
+    } catch (e) {
+      last = e;
+      console.error("[askClaude] attempt", attempt + 1, "failed:", (e as Error).message);
+      if ((e as Error).message === "CREDITS") break;
+      await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
+    }
+  }
+  throw last;
+}
+
+async function askOnce(system: string, prompt: string): Promise<string> {
   const apiKey = process.env["LOVABLE_API_KEY"];
   if (!apiKey) throw new Error("AI is not configured.");
   const anthropic = createAnthropic({
@@ -36,6 +51,7 @@ export async function askClaude(system: string, prompt: string): Promise<string>
   const text = await result.text;
   const finish = await result.finishReason;
   if (failure) {
+    console.error("[askClaude] provider error:", (failure as Error)?.message ?? failure);
     const status = (failure as { statusCode?: number }).statusCode;
     if (status === 429) throw new Error("RATE_LIMIT");
     if (status === 402 || status === 403) throw new Error("CREDITS");
