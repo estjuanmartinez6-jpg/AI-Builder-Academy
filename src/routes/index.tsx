@@ -4,21 +4,23 @@ import { useEffect, useState, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
+  generateIdeas,
   generatePlan,
   generateLesson,
   generateQuiz,
   generateFeedback,
-  type Lesson,
+  type Stage,
   type Question,
+  type Idea,
 } from "@/lib/academy.functions";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "AI Builder Academy — Aprende a construir con IA" },
-      { name: "description", content: "Planes de estudio personalizados para crear agentes, apps y automatizaciones con IA." },
-      { property: "og:title", content: "AI Builder Academy" },
-      { property: "og:description", content: "Learn to build AI agents and apps with Claude, Codex and Lovable." },
+      { title: "AI Builder Academy — Construye algo real con IA" },
+      { name: "description", content: "Convierte tu idea en un producto de IA real, etapa por etapa, con tu mentor de IA." },
+      { property: "og:title", content: "AI Builder Academy — Construye algo real con IA" },
+      { property: "og:description", content: "Learn by building: turn your idea into a working AI product with your personal AI mentor." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -27,75 +29,110 @@ export const Route = createFileRoute("/")({
 });
 
 type Lang = "en" | "es";
+type Level = "beginner" | "intermediate" | "advanced";
+const PASS = 2;
+
 const T = {
   es: {
-    tagline: "Aprende a construir productos y agentes de IA",
-    hero: "¿Qué quieres aprender a construir?",
-    sub: "Elige un objetivo o escribe el tuyo. Crearemos un plan de 5 lecciones solo para ti.",
-    suggestions: ["Construir mi primer agente de IA", "Aprender ingeniería de prompts", "Crear una app con Lovable", "Conectarme a una API de IA por primera vez", "Automatizar un flujo de trabajo con IA"],
-    placeholder: "O escribe tu propio objetivo…",
-    start: "Empezar a aprender",
-    planTitle: "Tu plan de estudio",
-    lesson: "Lección",
+    hero: "Construye algo real con IA.",
+    sub: "Aprende construyendo, no viendo tutoriales. Convierte tu idea en un producto de IA funcional con tu mentor personal.",
+    ask: "¿Qué quieres construir?",
+    suggestions: ["Un agente de IA de atención al cliente", "Un asistente de estudio con IA", "Un revisor de hojas de vida con IA", "Automatizar mi flujo de trabajo con IA", "Un chatbot de IA para mi sitio web", "Mi primer SaaS de IA"],
+    placeholder: "Describe tu idea… ej. “Quiero un asistente que resuma mis correos”",
+    levelLabel: "Tu nivel",
+    levels: { beginner: "Principiante", intermediate: "Intermedio", advanced: "Avanzado" },
+    start: "Empezar a construir",
+    idea: "Dame una idea",
+    ideasTitle: "Ideas para ti",
+    ideasHint: "Toca una para usarla. Usa el cuadro de arriba para contarme tus intereses.",
+    loadingIdeas: "Pensando ideas…",
+    journey: "Tu Build Journey",
+    stage: "Etapa",
+    mission: "Misión",
+    objective: "Objetivo",
+    skills: "Habilidades",
+    output: "Entregable",
+    diff: { easy: "Fácil", medium: "Media", hard: "Difícil" },
     back: "Volver",
-    newGoal: "Nuevo objetivo",
-    test: "Pon a prueba tus conocimientos",
-    loadingPlan: "Diseñando tu plan…",
-    loadingLesson: "Escribiendo tu lección…",
-    loadingQuiz: "Preparando tu quiz…",
-    question: "Pregunta",
-    of: "de",
-    correct: "¡Correcto!",
-    wrong: "Incorrecto",
-    next: "Siguiente",
-    finish: "Ver resultado",
-    score: "Tu puntuación",
-    backPlan: "Volver al plan",
+    newGoal: "Nuevo proyecto",
+    current: "Etapa actual",
+    yourOutput: "Tu entregable",
+    outputHint: "Pega o escribe aquí lo que construiste en “Constrúyelo”. Se guarda automáticamente.",
+    test: "Hacer el Builder Check",
+    needOutput: "Escribe tu entregable para continuar.",
+    loadingPlan: "Diseñando tu Build Journey…",
+    loadingLesson: "Preparando tu misión…",
+    loadingQuiz: "Preparando el Builder Check…",
+    question: "Pregunta", of: "de",
+    correct: "¡Correcto!", wrong: "Incorrecto",
+    next: "Siguiente", finish: "Ver resultado",
+    score: "Builder Check",
+    passed: "¡Misión completada!",
+    failed: `Necesitas ${PASS} de 3 para completar la misión.`,
+    tryAgain: "Intentar de nuevo",
+    backPlan: "Volver al journey",
     retry: "Reintentar",
-    progress: "Progreso",
-    completed: "completadas",
-    continue: "Continuar mi plan",
+    progress: "Progreso", completed: "completadas",
+    continue: "Continuar mi proyecto",
     errors: { RATE_LIMIT: "Hay mucha demanda ahora. Espera un momento y reintenta.", CREDITS: "El servicio de IA no está disponible por ahora (créditos o permisos).", AI_ERROR: "No pudimos generar el contenido. Inténtalo de nuevo." },
   },
   en: {
-    tagline: "Learn to build AI products and agents",
-    hero: "What do you want to learn to build?",
-    sub: "Pick a goal or type your own. We'll craft a 5-lesson plan just for you.",
-    suggestions: ["Build my first AI agent", "Learn prompt engineering", "Build an app with Lovable", "Connect to an AI API for the first time", "Automate a workflow with AI"],
-    placeholder: "Or type your own goal…",
-    start: "Start Learning",
-    planTitle: "Your study plan",
-    lesson: "Lesson",
+    hero: "Build something real with AI.",
+    sub: "Learn by building, not by watching tutorials. Turn your idea into a working AI product with your personal AI mentor.",
+    ask: "What do you want to build?",
+    suggestions: ["An AI customer support agent", "An AI study assistant", "An AI resume reviewer", "Automate my workflow with AI", "An AI chatbot for my website", "My first AI SaaS"],
+    placeholder: "Describe your idea… e.g. “An assistant that summarizes my emails”",
+    levelLabel: "Your level",
+    levels: { beginner: "Beginner", intermediate: "Intermediate", advanced: "Advanced" },
+    start: "Start Building",
+    idea: "Give me an idea",
+    ideasTitle: "Ideas for you",
+    ideasHint: "Tap one to use it. Use the box above to tell me your interests.",
+    loadingIdeas: "Thinking of ideas…",
+    journey: "Your Build Journey",
+    stage: "Stage",
+    mission: "Mission",
+    objective: "Objective",
+    skills: "Skills",
+    output: "Output",
+    diff: { easy: "Easy", medium: "Medium", hard: "Hard" },
     back: "Back",
-    newGoal: "New goal",
-    test: "Test my knowledge",
-    loadingPlan: "Designing your plan…",
-    loadingLesson: "Writing your lesson…",
-    loadingQuiz: "Preparing your quiz…",
-    question: "Question",
-    of: "of",
-    correct: "Correct!",
-    wrong: "Incorrect",
-    next: "Next",
-    finish: "See result",
-    score: "Your score",
-    backPlan: "Back to plan",
+    newGoal: "New project",
+    current: "Current stage",
+    yourOutput: "Your output",
+    outputHint: "Paste or write what you built in “Build it”. Saved automatically.",
+    test: "Take the Builder Check",
+    needOutput: "Write your output to continue.",
+    loadingPlan: "Designing your Build Journey…",
+    loadingLesson: "Preparing your mission…",
+    loadingQuiz: "Preparing the Builder Check…",
+    question: "Question", of: "of",
+    correct: "Correct!", wrong: "Incorrect",
+    next: "Next", finish: "See result",
+    score: "Builder Check",
+    passed: "Mission complete!",
+    failed: `You need ${PASS} of 3 to complete the mission.`,
+    tryAgain: "Try again",
+    backPlan: "Back to journey",
     retry: "Retry",
-    progress: "Progress",
-    completed: "completed",
-    continue: "Continue my plan",
+    progress: "Progress", completed: "completed",
+    continue: "Continue my project",
     errors: { RATE_LIMIT: "High demand right now. Wait a moment and retry.", CREDITS: "The AI service is unavailable right now (credits or permissions).", AI_ERROR: "We couldn't generate the content. Please try again." },
   },
 };
-const ICONS = ["🤖", "✍️", "💜", "🔌", "⚡"];
 
-type Plan = { goal: string; lang: Lang; lessons: Lesson[]; done: number[] };
+type Plan = { goal: string; projectName: string; level: Level; lang: Lang; lessons: Stage[]; done: number[]; artifacts: Record<number, string> };
 type View = { name: "home" } | { name: "plan" } | { name: "lesson"; i: number } | { name: "quiz"; i: number };
 
 function errMsg(e: unknown, lang: Lang): string {
   const m = e instanceof Error ? e.message : "";
   const map = T[lang].errors as Record<string, string>;
   return map[m] ?? map["AI_ERROR"] ?? "";
+}
+
+function isValidPlan(p: unknown): p is Plan {
+  const x = p as Plan;
+  return !!x && Array.isArray(x.lessons) && x.lessons.length > 0 && typeof x.lessons[0]?.objective === "string" && !!x.artifacts;
 }
 
 function App() {
@@ -109,7 +146,11 @@ function App() {
       const l = localStorage.getItem("aba-lang");
       if (l === "en" || l === "es") setLang(l);
       const p = localStorage.getItem("aba-plan");
-      if (p) setPlan(JSON.parse(p));
+      if (p) {
+        const parsed = JSON.parse(p);
+        if (isValidPlan(parsed)) setPlan(parsed);
+        else localStorage.removeItem("aba-plan");
+      }
     } catch {}
   }, []);
   useEffect(() => {
@@ -125,7 +166,6 @@ function App() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [view]);
 
-  const t = T[lang];
   const key = (i: number) => `${plan?.goal}|${lang}|${i}`;
 
   return (
@@ -158,18 +198,21 @@ function App() {
             key={key(view.i)} plan={plan} i={view.i} lang={lang}
             cached={lessonCache[key(view.i)]}
             onLoaded={(c) => setLessonCache((s) => ({ ...s, [key(view.i)]: c }))}
+            onArtifact={(txt) => setPlan((p) => (p ? { ...p, artifacts: { ...p.artifacts, [view.i]: txt } } : p))}
             onBack={() => setView({ name: "plan" })}
             onQuiz={() => setView({ name: "quiz", i: view.i })}
           />
         )}
         {view.name === "quiz" && plan && (
           <QuizView
-            key={"q" + key(view.i)} lang={lang} title={plan.lessons[view.i]!.title} content={lessonCache[key(view.i)] ?? plan.lessons[view.i]!.description}
+            key={"q" + key(view.i)} lang={lang} title={plan.lessons[view.i]!.title}
+            content={lessonCache[key(view.i)] ?? plan.lessons[view.i]!.explanation}
+            artifact={plan.artifacts[view.i] ?? ""}
             onPassed={() => setPlan((p) => (p && !p.done.includes(view.i) ? { ...p, done: [...p.done, view.i] } : p))}
+            onRetry={() => setView({ name: "lesson", i: view.i })}
             onBack={() => setView({ name: "plan" })}
           />
         )}
-        <p className="sr-only">{t.tagline}</p>
       </main>
     </div>
   );
@@ -207,60 +250,109 @@ function PrimaryBtn({ children, ...p }: React.ButtonHTMLAttributes<HTMLButtonEle
     </button>
   );
 }
+function OutlineBtn({ children, ...p }: React.ButtonHTMLAttributes<HTMLButtonElement> & { children: ReactNode }) {
+  return (
+    <button {...p} className="inline-flex items-center justify-center gap-2 rounded-full border bg-card px-6 py-3 font-semibold transition hover:border-primary hover:text-primary disabled:pointer-events-none disabled:opacity-50">
+      {children}
+    </button>
+  );
+}
 function GhostBtn({ children, onClick }: { children: ReactNode; onClick: () => void }) {
   return <button onClick={onClick} className="text-sm font-semibold text-muted-foreground transition hover:text-primary">{children}</button>;
+}
+function Chip({ children, tone = "muted" }: { children: ReactNode; tone?: "muted" | "accent" }) {
+  return <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${tone === "accent" ? "bg-secondary text-secondary-foreground" : "bg-muted text-muted-foreground"}`}>{children}</span>;
 }
 
 function Home({ lang, plan, onPlan, onContinue }: { lang: Lang; plan: Plan | null; onPlan: (p: Plan) => void; onContinue: () => void }) {
   const t = T[lang];
-  const fn = useServerFn(generatePlan);
+  const planFn = useServerFn(generatePlan);
+  const ideasFn = useServerFn(generateIdeas);
   const [goal, setGoal] = useState("");
-  const [selected, setSelected] = useState<number | null>(null);
+  const [level, setLevel] = useState<Level>("beginner");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const finalGoal = goal.trim() || (selected !== null ? t.suggestions[selected] : "");
+  const [ideas, setIdeas] = useState<Idea[] | null>(null);
+  const [ideasLoading, setIdeasLoading] = useState(false);
 
   async function start() {
-    if (!finalGoal) return;
+    const g = goal.trim();
+    if (g.length < 2) return;
     setLoading(true); setError("");
     try {
-      const r = await fn({ data: { goal: finalGoal, lang } });
-      onPlan({ goal: finalGoal, lang, lessons: r.lessons, done: [] });
-    } catch (e) { setError(errMsg(e, lang) ?? ""); } finally { setLoading(false); }
+      const r = await planFn({ data: { goal: g, level, lang } });
+      onPlan({ goal: g, projectName: r.projectName, level, lang, lessons: r.lessons, done: [], artifacts: {} });
+    } catch (e) { setError(errMsg(e, lang)); } finally { setLoading(false); }
+  }
+  async function getIdeas() {
+    setIdeasLoading(true); setError("");
+    try { const r = await ideasFn({ data: { interests: goal.trim().slice(0, 300), level, lang } }); setIdeas(r.ideas); }
+    catch (e) { setError(errMsg(e, lang)); } finally { setIdeasLoading(false); }
   }
 
   if (loading) return <Spinner label={t.loadingPlan} />;
   return (
     <div className="animate-rise">
-      <p className="text-sm font-semibold uppercase tracking-widest text-accent">{t.tagline}</p>
-      <h1 className="mt-3 max-w-2xl font-display text-4xl font-bold leading-tight sm:text-5xl">
-        <span className="text-brand">{t.hero}</span>
-      </h1>
+      <h1 className="max-w-2xl font-display text-4xl font-bold leading-tight sm:text-5xl"><span className="text-brand">{t.hero}</span></h1>
       <p className="mt-4 max-w-xl text-muted-foreground">{t.sub}</p>
 
       {plan && (
         <button onClick={onContinue} className="mt-8 flex w-full items-center justify-between rounded-2xl border bg-secondary p-4 text-left transition hover:border-primary">
           <span>
             <span className="block text-sm font-semibold">{t.continue}</span>
-            <span className="text-sm text-muted-foreground">{plan.goal} · {plan.done.length}/5 {t.completed}</span>
+            <span className="text-sm text-muted-foreground">{plan.projectName} · {plan.done.length}/5 {t.completed}</span>
           </span>
           <span className="text-primary">→</span>
         </button>
       )}
 
-      <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {t.suggestions.map((s, i) => (
-          <button key={s} onClick={() => { setSelected(i); setGoal(""); }}
-            className={`rounded-2xl border bg-card p-5 text-left shadow-card transition hover:-translate-y-0.5 hover:border-primary ${selected === i && !goal ? "border-primary ring-2 ring-primary/20" : ""}`}>
-            <span className="text-2xl">{ICONS[i]}</span>
-            <span className="mt-3 block font-semibold">{s}</span>
+      <label className="mt-10 block font-display text-xl font-semibold">{t.ask}</label>
+      <textarea value={goal} onChange={(e) => setGoal(e.target.value)} placeholder={t.placeholder} rows={3} maxLength={500}
+        className="mt-3 w-full resize-none rounded-2xl border bg-card p-4 text-base outline-none shadow-card transition focus:border-primary focus:ring-2 focus:ring-primary/20" />
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        {t.suggestions.map((s) => (
+          <button key={s} onClick={() => setGoal(s)}
+            className={`rounded-full border bg-card px-3.5 py-1.5 text-sm transition hover:border-primary hover:text-primary ${goal === s ? "border-primary text-primary" : ""}`}>
+            {s}
           </button>
         ))}
       </div>
-      <textarea value={goal} onChange={(e) => setGoal(e.target.value)} placeholder={t.placeholder} rows={2}
-        className="mt-4 w-full resize-none rounded-2xl border bg-card p-4 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" />
-      {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
-      <div className="mt-5"><PrimaryBtn onClick={start} disabled={!finalGoal}>{t.start} →</PrimaryBtn></div>
+
+      <div className="mt-6 flex flex-wrap items-center gap-3">
+        <span className="text-sm font-semibold text-muted-foreground">{t.levelLabel}</span>
+        <div className="flex rounded-full border p-0.5 text-sm">
+          {(["beginner", "intermediate", "advanced"] as Level[]).map((l) => (
+            <button key={l} onClick={() => setLevel(l)} className={`rounded-full px-3 py-1 transition ${level === l ? "bg-brand text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+              {t.levels[l]}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
+      <div className="mt-6 flex flex-wrap gap-3">
+        <PrimaryBtn onClick={start} disabled={goal.trim().length < 2}>{t.start} →</PrimaryBtn>
+        <OutlineBtn onClick={getIdeas} disabled={ideasLoading}>💡 {t.idea}</OutlineBtn>
+      </div>
+
+      {(ideasLoading || ideas) && (
+        <section className="mt-10 animate-rise">
+          <h2 className="font-display text-xl font-semibold">{t.ideasTitle}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{t.ideasHint}</p>
+          {ideasLoading ? <div className="mt-4"><Skeleton lines={4} /></div> : (
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              {ideas!.map((idea) => (
+                <button key={idea.title} onClick={() => { setGoal(`${idea.title} — ${idea.pitch}`); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                  className="rounded-2xl border bg-card p-5 text-left shadow-card transition hover:-translate-y-0.5 hover:border-primary">
+                  <span className="block font-semibold">{idea.title}</span>
+                  <span className="mt-1 block text-sm text-muted-foreground">{idea.pitch}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
     </div>
   );
 }
@@ -268,26 +360,38 @@ function Home({ lang, plan, onPlan, onContinue }: { lang: Lang; plan: Plan | nul
 function PlanView({ plan, lang, onOpen, onNew }: { plan: Plan; lang: Lang; onOpen: (i: number) => void; onNew: () => void }) {
   const t = T[lang];
   const pct = (plan.done.length / plan.lessons.length) * 100;
+  const currentIdx = plan.lessons.findIndex((_, i) => !plan.done.includes(i));
   return (
     <div className="animate-rise">
-      <div className="flex items-center justify-between"><GhostBtn onClick={onNew}>← {t.newGoal}</GhostBtn></div>
-      <h1 className="mt-4 font-display text-3xl font-bold">{t.planTitle}</h1>
+      <GhostBtn onClick={onNew}>← {t.newGoal}</GhostBtn>
+      <p className="mt-6 text-xs font-semibold uppercase tracking-widest text-accent">{t.journey}</p>
+      <h1 className="mt-1 font-display text-3xl font-bold">{plan.projectName}</h1>
       <p className="mt-1 text-muted-foreground">{plan.goal}</p>
-      <div className="mt-6">
-        <div className="flex justify-between text-xs font-semibold text-muted-foreground"><span>{t.progress}</span><span>{plan.done.length}/{plan.lessons.length} {t.completed}</span></div>
+      <div className="mt-6 rounded-2xl border bg-card p-5 shadow-card">
+        <div className="flex flex-wrap justify-between gap-2 text-xs font-semibold text-muted-foreground">
+          <span>{currentIdx >= 0 ? `${t.current}: ${t.stage} ${currentIdx + 1}` : t.passed}</span>
+          <span>{plan.done.length}/{plan.lessons.length} {t.completed}</span>
+        </div>
         <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted"><div className="h-full bg-brand transition-all duration-700" style={{ width: `${pct}%` }} /></div>
       </div>
       <ol className="mt-8 space-y-3">
-        {plan.lessons.map((l, i) => {
+        {plan.lessons.map((s, i) => {
           const done = plan.done.includes(i);
+          const current = i === currentIdx;
           return (
             <li key={i} style={{ animationDelay: `${i * 60}ms` }} className="animate-rise">
-              <button onClick={() => onOpen(i)} className={`flex w-full items-start gap-4 rounded-2xl border bg-card p-5 text-left shadow-card transition hover:-translate-y-0.5 hover:border-primary ${done ? "border-success/40" : ""}`}>
-                <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm font-bold ${done ? "bg-success text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}>{done ? "✓" : i + 1}</span>
+              <button onClick={() => onOpen(i)} className={`flex w-full items-start gap-4 rounded-2xl border bg-card p-5 text-left shadow-card transition hover:-translate-y-0.5 hover:border-primary ${done ? "border-success/40" : current ? "border-primary ring-2 ring-primary/15" : ""}`}>
+                <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm font-bold ${done ? "bg-success text-primary-foreground" : current ? "bg-brand text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}>{done ? "✓" : i + 1}</span>
                 <span className="flex-1">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-accent">{t.lesson} {i + 1}</span>
-                  <span className="mt-0.5 block font-semibold">{l.title}</span>
-                  <span className="mt-1 block text-sm text-muted-foreground">{l.description}</span>
+                  <span className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-accent">{t.stage} {i + 1}</span>
+                    <Chip>{t.diff[s.difficulty]}</Chip>
+                  </span>
+                  <span className="mt-1 block font-semibold">{s.title}</span>
+                  <span className="mt-1 block text-sm text-muted-foreground">{s.explanation}</span>
+                  <span className="mt-3 block text-sm"><b>{t.objective}:</b> {s.objective}</span>
+                  <span className="mt-1 block text-sm"><b>{t.output}:</b> {s.artifact}</span>
+                  <span className="mt-3 flex flex-wrap gap-1.5">{s.skills.map((k) => <Chip key={k} tone="accent">{k}</Chip>)}</span>
                 </span>
                 <span className="self-center text-primary">→</span>
               </button>
@@ -299,26 +403,27 @@ function PlanView({ plan, lang, onOpen, onNew }: { plan: Plan; lang: Lang; onOpe
   );
 }
 
-function LessonView({ plan, i, lang, cached, onLoaded, onBack, onQuiz }: { plan: Plan; i: number; lang: Lang; cached?: string | undefined; onLoaded: (c: string) => void; onBack: () => void; onQuiz: () => void }) {
+function LessonView({ plan, i, lang, cached, onLoaded, onArtifact, onBack, onQuiz }: { plan: Plan; i: number; lang: Lang; cached?: string | undefined; onLoaded: (c: string) => void; onArtifact: (t: string) => void; onBack: () => void; onQuiz: () => void }) {
   const t = T[lang];
   const fn = useServerFn(generateLesson);
   const [content, setContent] = useState(cached ?? "");
   const [error, setError] = useState("");
-  const lesson = plan.lessons[i]!;
+  const [artifact, setArtifact] = useState(plan.artifacts[i] ?? "");
+  const s = plan.lessons[i]!;
   async function load() {
     setError("");
     try {
-      const r = await fn({ data: { goal: plan.goal, title: lesson.title, description: lesson.description, index: i, outline: plan.lessons.map((l) => l.title), lang } });
+      const r = await fn({ data: { goal: plan.goal, title: s.title, description: s.explanation, objective: s.objective, artifact: s.artifact, level: plan.level, index: i, outline: plan.lessons.map((l) => l.title), lang } });
       setContent(r.content); onLoaded(r.content);
-    } catch (e) { setError(errMsg(e, lang) ?? ""); }
+    } catch (e) { setError(errMsg(e, lang)); }
   }
   useEffect(() => { if (!cached) load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <article className="mx-auto max-w-3xl animate-rise">
       <GhostBtn onClick={onBack}>← {t.back}</GhostBtn>
-      <p className="mt-6 text-xs font-semibold uppercase tracking-wider text-accent">{t.lesson} {i + 1} / {plan.lessons.length}</p>
-      <h1 className="mt-1 font-display text-3xl font-bold">{lesson.title}</h1>
-      <p className="mt-2 text-muted-foreground">{lesson.description}</p>
+      <p className="mt-6 text-xs font-semibold uppercase tracking-wider text-accent">{t.mission} {i + 1} / {plan.lessons.length}</p>
+      <h1 className="mt-1 font-display text-3xl font-bold">{s.title}</h1>
+      <p className="mt-2 text-muted-foreground"><b className="text-foreground">{t.objective}:</b> {s.objective}</p>
       <div className="mt-8 rounded-3xl border bg-card p-6 shadow-card sm:p-8">
         {error ? <ErrorBox msg={error} onRetry={load} label={t.retry} /> : content ? (
           <div className="prose-lesson animate-rise"><ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown></div>
@@ -326,12 +431,24 @@ function LessonView({ plan, i, lang, cached, onLoaded, onBack, onQuiz }: { plan:
           <div><p className="mb-5 flex items-center gap-2 text-sm text-muted-foreground"><span className="h-4 w-4 animate-spin rounded-full border-2 border-secondary border-t-primary" />{t.loadingLesson}</p><Skeleton lines={10} /></div>
         )}
       </div>
-      {content && <div className="mt-8 flex justify-center"><PrimaryBtn onClick={onQuiz}>{t.test} →</PrimaryBtn></div>}
+      {content && (
+        <section className="mt-8 rounded-3xl border-2 border-primary/30 bg-card p-6 shadow-card animate-rise">
+          <p className="text-xs font-semibold uppercase tracking-wider text-accent">{t.yourOutput}</p>
+          <h2 className="mt-1 font-display text-xl font-semibold">{s.artifact}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{t.outputHint}</p>
+          <textarea value={artifact} onChange={(e) => { setArtifact(e.target.value); onArtifact(e.target.value); }} rows={8} maxLength={8000}
+            className="mt-4 w-full rounded-2xl border bg-background p-4 font-mono text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" />
+          <div className="mt-5 flex flex-wrap items-center gap-3">
+            <PrimaryBtn onClick={onQuiz} disabled={artifact.trim().length < 10}>{t.test} →</PrimaryBtn>
+            {artifact.trim().length < 10 && <span className="text-sm text-muted-foreground">{t.needOutput}</span>}
+          </div>
+        </section>
+      )}
     </article>
   );
 }
 
-function QuizView({ lang, title, content, onPassed, onBack }: { lang: Lang; title: string; content: string; onPassed: () => void; onBack: () => void }) {
+function QuizView({ lang, title, content, artifact, onPassed, onRetry, onBack }: { lang: Lang; title: string; content: string; artifact: string; onPassed: () => void; onRetry: () => void; onBack: () => void }) {
   const t = T[lang];
   const quizFn = useServerFn(generateQuiz);
   const fbFn = useServerFn(generateFeedback);
@@ -345,14 +462,14 @@ function QuizView({ lang, title, content, onPassed, onBack }: { lang: Lang; titl
 
   async function load() {
     setError("");
-    try { const r = await quizFn({ data: { title, content, lang } }); setQs(r.questions); } catch (e) { setError(errMsg(e, lang) ?? ""); }
+    try { const r = await quizFn({ data: { title, content, lang } }); setQs(r.questions); } catch (e) { setError(errMsg(e, lang)); }
   }
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function finish(final: number) {
     setFinished(true);
-    onPassed();
-    try { const r = await fbFn({ data: { title, score: final, total: qs!.length, lang } }); setFeedback(r.message); }
+    if (final >= PASS) onPassed();
+    try { const r = await fbFn({ data: { title, score: final, total: qs!.length, artifact, lang } }); setFeedback(r.message); }
     catch (e) { setFeedback(errMsg(e, lang)); }
   }
 
@@ -360,14 +477,19 @@ function QuizView({ lang, title, content, onPassed, onBack }: { lang: Lang; titl
   if (!qs) return <Spinner label={t.loadingQuiz} />;
 
   if (finished) {
+    const ok = score >= PASS;
     return (
       <div className="mx-auto max-w-xl text-center animate-rise">
         <p className="text-sm font-semibold uppercase tracking-widest text-accent">{t.score}</p>
         <p className="mt-2 font-display text-7xl font-bold"><span className="text-brand">{score}/{qs.length}</span></p>
-        <div className="mt-8 rounded-2xl border bg-card p-6 shadow-card">
+        <p className={`mt-3 font-semibold ${ok ? "text-success" : "text-destructive"}`}>{ok ? `✓ ${t.passed}` : t.failed}</p>
+        <div className="mt-8 rounded-2xl border bg-card p-6 text-left shadow-card">
           {feedback ? <p className="leading-relaxed animate-rise">{feedback}</p> : <Skeleton lines={3} />}
         </div>
-        <div className="mt-8"><PrimaryBtn onClick={onBack}>{t.backPlan}</PrimaryBtn></div>
+        <div className="mt-8 flex flex-wrap justify-center gap-3">
+          {!ok && <OutlineBtn onClick={onRetry}>{t.tryAgain}</OutlineBtn>}
+          <PrimaryBtn onClick={onBack}>{t.backPlan}</PrimaryBtn>
+        </div>
       </div>
     );
   }
