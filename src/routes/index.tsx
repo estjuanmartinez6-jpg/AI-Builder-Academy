@@ -112,12 +112,18 @@ function App() {
       if (p) setPlan(JSON.parse(p));
     } catch {}
   }, []);
-  useEffect(() => localStorage.setItem("aba-lang", lang), [lang]);
   useEffect(() => {
-    if (plan) localStorage.setItem("aba-plan", JSON.stringify(plan));
-    else localStorage.removeItem("aba-plan");
+    try { localStorage.setItem("aba-lang", lang); } catch {}
+  }, [lang]);
+  useEffect(() => {
+    try {
+      if (plan) localStorage.setItem("aba-plan", JSON.stringify(plan));
+      else localStorage.removeItem("aba-plan");
+    } catch {}
   }, [plan]);
-  useEffect(() => window.scrollTo({ top: 0, behavior: "smooth" }), [view]);
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [view]);
 
   const t = T[lang];
   const key = (i: number) => `${plan?.goal}|${lang}|${i}`;
