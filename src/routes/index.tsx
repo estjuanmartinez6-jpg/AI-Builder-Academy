@@ -158,7 +158,7 @@ function App() {
         )}
         {view.name === "quiz" && plan && (
           <QuizView
-            key={"q" + key(view.i)} lang={lang} title={plan.lessons[view.i].title} content={lessonCache[key(view.i)] ?? plan.lessons[view.i].description}
+            key={"q" + key(view.i)} lang={lang} title={plan.lessons[view.i]!.title} content={lessonCache[key(view.i)] ?? plan.lessons[view.i]!.description}
             onPassed={() => setPlan((p) => (p && !p.done.includes(view.i) ? { ...p, done: [...p.done, view.i] } : p))}
             onBack={() => setView({ name: "plan" })}
           />
@@ -298,7 +298,7 @@ function LessonView({ plan, i, lang, cached, onLoaded, onBack, onQuiz }: { plan:
   const fn = useServerFn(generateLesson);
   const [content, setContent] = useState(cached ?? "");
   const [error, setError] = useState("");
-  const lesson = plan.lessons[i];
+  const lesson = plan.lessons[i]!;
   async function load() {
     setError("");
     try {
