@@ -92,10 +92,10 @@ const ICONS = ["🤖", "✍️", "💜", "🔌", "⚡"];
 type Plan = { goal: string; lang: Lang; lessons: Lesson[]; done: number[] };
 type View = { name: "home" } | { name: "plan" } | { name: "lesson"; i: number } | { name: "quiz"; i: number };
 
-function errMsg(e: unknown, lang: Lang) {
+function errMsg(e: unknown, lang: Lang): string {
   const m = e instanceof Error ? e.message : "";
   const map = T[lang].errors as Record<string, string>;
-  return map[m] ?? map.AI_ERROR;
+  return map[m] ?? map["AI_ERROR"] ?? "";
 }
 
 function App() {
@@ -220,7 +220,7 @@ function Home({ lang, plan, onPlan, onContinue }: { lang: Lang; plan: Plan | nul
     try {
       const r = await fn({ data: { goal: finalGoal, lang } });
       onPlan({ goal: finalGoal, lang, lessons: r.lessons, done: [] });
-    } catch (e) { setError(errMsg(e, lang)); } finally { setLoading(false); }
+    } catch (e) { setError(errMsg(e, lang) ?? ""); } finally { setLoading(false); }
   }
 
   if (loading) return <Spinner label={t.loadingPlan} />;
@@ -293,7 +293,7 @@ function PlanView({ plan, lang, onOpen, onNew }: { plan: Plan; lang: Lang; onOpe
   );
 }
 
-function LessonView({ plan, i, lang, cached, onLoaded, onBack, onQuiz }: { plan: Plan; i: number; lang: Lang; cached?: string; onLoaded: (c: string) => void; onBack: () => void; onQuiz: () => void }) {
+function LessonView({ plan, i, lang, cached, onLoaded, onBack, onQuiz }: { plan: Plan; i: number; lang: Lang; cached?: string | undefined; onLoaded: (c: string) => void; onBack: () => void; onQuiz: () => void }) {
   const t = T[lang];
   const fn = useServerFn(generateLesson);
   const [content, setContent] = useState(cached ?? "");
@@ -304,7 +304,7 @@ function LessonView({ plan, i, lang, cached, onLoaded, onBack, onQuiz }: { plan:
     try {
       const r = await fn({ data: { goal: plan.goal, title: lesson.title, description: lesson.description, index: i, outline: plan.lessons.map((l) => l.title), lang } });
       setContent(r.content); onLoaded(r.content);
-    } catch (e) { setError(errMsg(e, lang)); }
+    } catch (e) { setError(errMsg(e, lang) ?? ""); }
   }
   useEffect(() => { if (!cached) load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   return (
@@ -339,7 +339,7 @@ function QuizView({ lang, title, content, onPassed, onBack }: { lang: Lang; titl
 
   async function load() {
     setError("");
-    try { const r = await quizFn({ data: { title, content, lang } }); setQs(r.questions); } catch (e) { setError(errMsg(e, lang)); }
+    try { const r = await quizFn({ data: { title, content, lang } }); setQs(r.questions); } catch (e) { setError(errMsg(e, lang) ?? ""); }
   }
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
