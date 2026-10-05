@@ -366,7 +366,7 @@ function QuizView({ lang, title, content, onPassed, onBack }: { lang: Lang; titl
     );
   }
 
-  const q = qs[idx];
+  const q = qs[idx]!;
   const answered = picked !== null;
   return (
     <div className="mx-auto max-w-2xl animate-rise" key={idx}>
