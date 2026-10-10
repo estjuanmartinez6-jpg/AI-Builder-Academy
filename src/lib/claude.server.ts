@@ -48,11 +48,18 @@ async function askOnce(system: string, prompt: string): Promise<string> {
       failure = error;
     },
   });
-  const text = await result.text;
-  const finish = await result.finishReason;
+  let text = "";
+  let finish: unknown = "";
+  try {
+    text = await result.text;
+    finish = await result.finishReason;
+  } catch (e) {
+    failure ??= e;
+  }
   if (failure) {
     console.error("[askClaude] provider error:", (failure as Error)?.message ?? failure);
-    const status = (failure as { statusCode?: number }).statusCode;
+    const f = failure as { statusCode?: number; cause?: { statusCode?: number }; message?: string };
+    const status = f.statusCode ?? f.cause?.statusCode ?? (/credits|payment/i.test(f.message ?? "") ? 402 : undefined);
     if (status === 429) throw new Error("RATE_LIMIT");
     if (status === 402 || status === 403) throw new Error("CREDITS");
     throw new Error("AI_ERROR");

@@ -417,7 +417,8 @@ function LessonView({ plan, i, lang, cached, onLoaded, onArtifact, onBack, onQui
       setContent(r.content); onLoaded(r.content);
     } catch (e) { setError(errMsg(e, lang)); }
   }
-  useEffect(() => { if (!cached) load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const started = useRef(false);
+  useEffect(() => { if (started.current) return; started.current = true; if (!cached) load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <article className="mx-auto max-w-3xl animate-rise">
       <GhostBtn onClick={onBack}>← {t.back}</GhostBtn>
@@ -464,7 +465,8 @@ function QuizView({ lang, title, content, artifact, onPassed, onRetry, onBack }:
     setError("");
     try { const r = await quizFn({ data: { title, content, lang } }); setQs(r.questions); } catch (e) { setError(errMsg(e, lang)); }
   }
-  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const started = useRef(false);
+  useEffect(() => { if (started.current) return; started.current = true; load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function finish(final: number) {
     setFinished(true);
